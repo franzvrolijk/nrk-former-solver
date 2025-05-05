@@ -14,15 +14,17 @@ public enum Point : byte
 
 public record struct Coordinate(int X, int Y);
 
-// o = orange, p = pink, b = blue, g = green
-// orange = 0, pink = 1, blue = 2, green = 3
-// s is a string of the board, starting top left and going top to bottom, left to right
 public class Board
 {
     public const int WIDTH = 7;
     public const int HEIGHT = 9;
     public Point[][] Data { get; } = new Point[WIDTH][];
     public List<Coordinate> Moves { get; } = [];
+
+    /// <param name="s">
+    /// A 7*9 (63) character string representation of the board, starting from top left and going down.
+    /// 'o' for Orange, 'p' for Pink, 'b' for Blue, and 'g' for Green.
+    /// </param>
     public Board(string s)
     {
         if (s.Length != WIDTH * HEIGHT)
@@ -38,7 +40,6 @@ public class Board
             { 'g', Point.Green },
         };
 
-        // For each column
         for (int x = 0; x < WIDTH; x++)
         {
             var column = s
@@ -50,7 +51,7 @@ public class Board
         }
     }
 
-    // Copy constructor, just initialize the inner arrays
+    // Copy constructor, just initialize the inner arrays, no need to fill them with anything.
     public Board()
     {
         for (int x = 0; x < WIDTH; x++)
@@ -98,20 +99,11 @@ public class Board
         Moves.Add(new Coordinate(x, y));
     }
 
-    // private static readonly ConcurrentDictionary<string, List<Coordinate>> _groupMemo = new();
     public List<Coordinate> GetGroup(int x, int y)
     {
-        // var memoKey = $"{GetMemoKey()}_{x}_{y}";
-        // if (_groupMemo.TryGetValue(memoKey, out var memoGroup))
-        //     return memoGroup;
-
         var group = new List<Coordinate> { new(x, y) };
 
         RecurseNeighbors(group, Data[x][y], x, y);
-
-        // group = group.OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
-
-        // _groupMemo.TryAdd(memoKey, group);
 
         return group;
     }
@@ -182,32 +174,30 @@ public class Board
         return newBoard;
     }
 
-    private static readonly ConcurrentDictionary<string, List<Coordinate>> _prioMemo = new();
+    private int GetDistinctMovesAfterMove(int x, int y)
+    {
+        var copy = Copy();
+        copy.MakeMove(x, y);
+
+        var groupsAfterMove = copy.GetDistinctMoves().Count;
+
+        return groupsAfterMove;
+    }
+
     public List<Coordinate> GetPrioritizedMoves()
     {
-        // var boardKey = GetMemoKey();
-        // if (_prioMemo.TryGetValue(boardKey, out var moves))
-        // {
-        //     return moves;
-        // }
-
         var distinctMoves = GetDistinctMoves();
 
         var prioritizedMoves = distinctMoves
-            .Select(tuple =>
-            {
-                var (move, groupSize) = tuple;
-                var copy = Copy();
-                copy.MakeMove(move.X, move.Y);
-                var groupsAfterMove = copy.GetDistinctMoves().Count;
-                return (move, groupSize, groupsAfterMove);
-            })
+            .Select(tuple => (
+                move: tuple.Move,
+                groupSize: tuple.GroupSize,
+                groupsAfterMove: GetDistinctMovesAfterMove(tuple.Move.X, tuple.Move.Y)
+            ))
             .OrderBy(tuple => tuple.groupsAfterMove)
             .ThenByDescending(tuple => tuple.groupSize)
             .Select(tuple => tuple.move)
             .ToList();
-
-        // _prioMemo.TryAdd(boardKey, prioritizedMoves);
 
         return prioritizedMoves;
     }
