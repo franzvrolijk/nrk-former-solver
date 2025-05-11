@@ -6,7 +6,7 @@ public class Solver
 {
     private readonly ConcurrentDictionary<string, int> _processed = new();
     private int _bestSoFar = int.MaxValue;
-    private const int _maxDepth = 16;
+    private const int _maxDepth = 15;
 
     public List<Coordinate> SolveSync(Board board)
     {

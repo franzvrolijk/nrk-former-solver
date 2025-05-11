@@ -1,0 +1,244 @@
+use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Point {
+    Orange,
+    Pink,
+    Blue,
+    Green,
+    Empty
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Coordinate {
+    pub x: usize,
+    pub y: usize,
+}
+
+#[derive(Clone)]
+pub struct Board {
+    pub data: Vec<Point>, // 2D array flattened to 1D
+    pub moves: Vec<Coordinate>,
+}
+
+#[derive(Debug)]
+pub enum BoardError {
+    InvalidBoardStringLength,
+    InvalidMove
+}
+
+impl Board {
+    pub const WIDTH: usize = 7;
+    pub const HEIGHT: usize = 9;
+
+    pub fn new(s: &str) -> Result<Self, BoardError> {
+        if s.len() != Self::HEIGHT * Self::WIDTH {
+            return Err(BoardError::InvalidBoardStringLength);
+        }
+
+        let char_to_point: HashMap<char, Point> = [
+            ('o', Point::Orange),
+            ('p', Point::Pink),
+            ('g', Point::Green),
+            ('b', Point::Blue),
+        ]
+        .into_iter()
+        .collect();
+
+        let mut data: Vec<Point> = Vec::with_capacity(Self::WIDTH * Self::HEIGHT);
+
+        for c in s.chars() {
+            let point = char_to_point
+            .get(&c)
+            .copied()
+            .unwrap_or(Point::Empty);
+
+            data.push(point);
+        }
+
+        Ok(Board {
+            data,
+            moves: Vec::new()
+        })
+    }
+
+    fn get_index(x: usize, y: usize) -> usize {
+        (x * Self::HEIGHT) + y
+    }
+
+    pub fn get_memo_key(&self) ->  &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.data.as_ptr() as *const u8, 
+                self.data.len()
+            )
+        }
+    }
+
+    pub fn is_solved(&self) -> bool {
+        self.data.iter().all(|&x| x == Point::Empty)
+    }
+
+    pub fn make_move(&mut self, x: usize, y: usize) -> Result<(),BoardError> {
+        if self.data[Board::get_index(x, y)] == Point::Empty {
+            return Err(BoardError::InvalidMove)
+        }
+
+        let group = self.get_group(x, y);
+
+        for Coordinate {x: gx, y: gy} in group {
+            self.data[Board::get_index(gx, gy)] = Point::Empty;
+        }
+
+        self.apply_gravity();
+
+        self.moves.push(Coordinate {x, y});
+
+        Ok(())
+    }
+
+    pub fn get_group(&self, x: usize, y: usize) -> HashSet<Coordinate> {
+        let mut group = HashSet::from([Coordinate {x, y}]);
+
+        self.recurse_neighbors(&mut group, self.data[Board::get_index(x, y)], x, y);
+
+        return group;
+    }
+
+    fn recurse_neighbors(&self, group: &mut HashSet<Coordinate>, color: Point, x: usize, y: usize) {
+        // TODO - This may create usizes less than 0
+        let mut neighbors: Vec<Coordinate> = Vec::with_capacity(4);
+
+        if x > 0 { neighbors.push(Coordinate {x: x - 1, y}) }
+        if x < Board::WIDTH - 1 { neighbors.push(Coordinate {x: x + 1, y}); }
+        if y > 0 { neighbors.push(Coordinate {y: y - 1, x}) }
+        if y < Board::HEIGHT - 1 { neighbors.push(Coordinate {y: y + 1, x}); }
+
+        for Coordinate {x: nx, y: ny} in neighbors {
+            let is_same_color = self.data[Board::get_index(nx, ny)] == color;
+            if !is_same_color { continue; }
+
+            if !group.insert(Coordinate{x: nx, y: ny}) { continue; }
+
+            self.recurse_neighbors(group, color, nx, ny);
+        }
+    }
+
+    fn apply_gravity(&mut self) {
+        for x in 0..Board::WIDTH {
+            let column_start = x * Board::HEIGHT;
+            let column = &mut self.data[column_start..column_start + Board::HEIGHT];
+            let mut inserted_at = Board::HEIGHT - 1;
+
+            for i in (0..Board::HEIGHT).rev() {
+                if column[i] == Point::Empty { continue; }
+
+                column[inserted_at] = column[i];
+                inserted_at -= 1;
+            }
+
+            for i in (0..inserted_at + 1).rev() {
+                column[i] = Point::Empty;
+            }
+        }
+    }
+
+    pub fn get_distinct_moves(&self) -> Vec<(Coordinate, usize)> {
+        let mut distinct_moves: Vec<(Coordinate, usize)> = Vec::new();
+        let mut visited: HashSet<Coordinate> = HashSet::new();
+        
+        for x in 0..Board::WIDTH {
+            for y in 0..Board::HEIGHT {
+                let is_empty = self.data[Board::get_index(x, y)] == Point::Empty;
+                if is_empty { continue; }
+
+                let already_visited = !visited.insert(Coordinate {x, y});
+                if already_visited { continue; }
+
+                let group = self.get_group(x, y);
+
+                distinct_moves.push((Coordinate{x, y}, group.len()));
+            }
+        }
+
+        return distinct_moves;
+    }
+
+    fn get_distinct_moves_after_move(&self, x: usize, y: usize) -> usize {
+        let mut clone = self.clone();
+
+        clone.make_move(x, y).expect("Move was invalid");
+
+        let groups_after_move = clone.get_distinct_moves().len();
+
+        return groups_after_move;
+    }
+
+    pub fn get_prioritized_moves(&self) -> Vec<Coordinate> {
+        let distinct_moves = self.get_distinct_moves();
+
+        distinct_moves
+        .iter()
+        .map(|&m| (m.0, m.1, self.get_distinct_moves_after_move(m.0.x, m.0.y)))
+        .sorted_by(|a, b| {
+            a.2.cmp(&b.2)
+                .then(b.1.cmp(&a.1))
+        })
+        .map(|(coord, _, _)| coord)
+        .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructor() {
+        let board = Board::new("ooooooooopppppppppbbbbbbbbbgggggggggooooooooopppppppppbbbbbbbbb").expect("board");
+        
+        let expected = [
+            (Point::Orange, 9),
+            (Point::Pink, 9),
+            (Point::Blue, 9),
+            (Point::Green, 9),
+            (Point::Orange, 9),
+            (Point::Pink, 9),
+            (Point::Blue, 9)
+        ];
+
+        for (chunk, (expected_point, size)) in board.data.chunks(9).zip(expected) {
+            assert!(chunk.iter().all(|&p| p == expected_point));
+            assert!(chunk.len() == size)
+        }
+    }
+
+    #[test]
+    fn make_move() {
+        let mut board = Board::new("opbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbb").expect("board");
+
+        board.make_move(0, 1).expect("move made");
+        
+        let expected_rows = [
+            vec![Point::Empty; Board::WIDTH], 
+            vec![Point::Orange; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+            vec![Point::Blue; Board::WIDTH],
+        ];
+
+        for y in 0..Board::HEIGHT {
+            let row: Vec<Point> = (0..Board::WIDTH)
+                .map(|x| board.data[Board::get_index(x, y)])
+                .collect();
+
+            assert_eq!(expected_rows[y], row, "Row {} does not match expected", y);
+        }
+    }
+}
