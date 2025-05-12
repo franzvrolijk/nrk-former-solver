@@ -1,6 +1,6 @@
 ﻿using NRK;
 
-var gameString = "obopgboggoobppopbgopbpbobppobgpgopboobpogpboopppopobopgpbbbggpb";
+var gameString = "ogbbbobbgpogogobobpobooooggooopgbppbgoobbooggbpoppgogbpbopobppb";
 
 var board = new Board(gameString);
 

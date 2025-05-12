@@ -38,10 +38,14 @@ impl Board {
       return Err(BoardError::InvalidBoardStringLength);
     }
 
-    let char_to_point: HashMap<char, Point> =
-      [('o', Point::Orange), ('p', Point::Pink), ('g', Point::Green), ('b', Point::Blue)]
-        .into_iter()
-        .collect();
+    let char_to_point: HashMap<char, Point> = [
+      ('o', Point::Orange),
+      ('p', Point::Pink),
+      ('g', Point::Green),
+      ('b', Point::Blue),
+    ]
+    .into_iter()
+    .collect();
 
     let mut data: Vec<Point> = Vec::with_capacity(Self::WIDTH * Self::HEIGHT);
 
@@ -59,7 +63,12 @@ impl Board {
   }
 
   pub fn get_memo_key(&self) -> &[u8] {
-    unsafe { std::slice::from_raw_parts(self.data.as_ptr() as *const u8, self.data.len()) }
+    unsafe {
+      std::slice::from_raw_parts(
+        self.data.as_ptr() as *const u8,
+        self.data.len(),
+      )
+    }
   }
 
   pub fn is_solved(&self) -> bool {
@@ -87,12 +96,23 @@ impl Board {
   pub fn get_group(&self, x: usize, y: usize) -> HashSet<Coordinate> {
     let mut group = HashSet::from([Coordinate { x, y }]);
 
-    self.recurse_neighbors(&mut group, self.data[Board::get_index(x, y)], x, y);
+    self.recurse_neighbors(
+      &mut group,
+      self.data[Board::get_index(x, y)],
+      x,
+      y,
+    );
 
     return group;
   }
 
-  fn recurse_neighbors(&self, group: &mut HashSet<Coordinate>, color: Point, x: usize, y: usize) {
+  fn recurse_neighbors(
+    &self,
+    group: &mut HashSet<Coordinate>,
+    color: Point,
+    x: usize,
+    y: usize,
+  ) {
     // TODO - This may create usizes less than 0
     let mut neighbors: Vec<Coordinate> = Vec::with_capacity(4);
 
@@ -135,7 +155,7 @@ impl Board {
         }
 
         column[inserted_at] = column[i];
-        inserted_at -= 1;
+        inserted_at = inserted_at.saturating_sub(1);
       }
 
       for i in (0..inserted_at + 1).rev() {
@@ -184,7 +204,13 @@ impl Board {
 
     distinct_moves
       .iter()
-      .map(|&m| (m.0, m.1, self.get_distinct_moves_after_move(m.0.x, m.0.y)))
+      .map(|&m| {
+        (
+          m.0,
+          m.1,
+          self.get_distinct_moves_after_move(m.0.x, m.0.y),
+        )
+      })
       .sorted_by(|a, b| a.2.cmp(&b.2).then(b.1.cmp(&a.1)))
       .map(|(coord, _, _)| coord)
       .collect()
@@ -197,8 +223,10 @@ mod tests {
 
   #[test]
   fn constructor() {
-    let board =
-      Board::new("ooooooooopppppppppbbbbbbbbbgggggggggooooooooopppppppppbbbbbbbbb").expect("board");
+    let board = Board::new(
+      "ooooooooopppppppppbbbbbbbbbgggggggggooooooooopppppppppbbbbbbbbb",
+    )
+    .expect("board");
 
     let expected = [
       (Point::Orange, 9),
@@ -218,8 +246,10 @@ mod tests {
 
   #[test]
   fn make_move() {
-    let mut board =
-      Board::new("opbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbb").expect("board");
+    let mut board = Board::new(
+      "opbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbbopbbbbbbb",
+    )
+    .expect("board");
 
     board.make_move(0, 1).expect("move made");
 
@@ -236,21 +266,30 @@ mod tests {
     ];
 
     for y in 0..Board::HEIGHT {
-      let row: Vec<Point> = (0..Board::WIDTH).map(|x| board.data[Board::get_index(x, y)]).collect();
+      let row: Vec<Point> =
+        (0..Board::WIDTH).map(|x| board.data[Board::get_index(x, y)]).collect();
 
-      assert_eq!(expected_rows[y], row, "Row {} does not match expected", y);
+      assert_eq!(
+        expected_rows[y], row,
+        "Row {} does not match expected",
+        y
+      );
     }
   }
 
   #[test]
   fn get_group() {
-    let board =
-      Board::new("opooooooopppppppppbbbbbbbpbgggggggpgooooooooopppppppppbbbbbbbbb").expect("board");
+    let board = Board::new(
+      "opooooooopppppppppbbbbbbbpbgggggggpgooooooooopppppppppbbbbbbbbb",
+    )
+    .expect("board");
 
     let group = board.get_group(1, 1);
 
-    let sorted_group: Vec<Coordinate> =
-      group.into_iter().sorted_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y))).collect();
+    let sorted_group: Vec<Coordinate> = group
+      .into_iter()
+      .sorted_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y)))
+      .collect();
 
     let expected_group: Vec<Coordinate> = vec![
       Coordinate { x: 0, y: 1 },
@@ -272,8 +311,10 @@ mod tests {
 
   #[test]
   fn copy() {
-    let mut original =
-      Board::new("ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo").expect("board");
+    let mut original = Board::new(
+      "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+    )
+    .expect("board");
 
     let other = original.clone();
 
@@ -286,8 +327,10 @@ mod tests {
 
   #[test]
   fn is_solved() {
-    let mut board =
-      Board::new("ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo").expect("board");
+    let mut board = Board::new(
+      "ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+    )
+    .expect("board");
 
     assert_eq!(board.is_solved(), false);
 
