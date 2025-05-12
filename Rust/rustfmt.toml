@@ -1,2 +1,7 @@
 max_width = 100
 tab_spaces = 2
+chain_width = 100
+fn_call_width = 100
+indent_style = "Block"
+use_small_heuristics = "Max"
+trailing_semicolons = true

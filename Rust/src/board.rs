@@ -38,14 +38,10 @@ impl Board {
       return Err(BoardError::InvalidBoardStringLength);
     }
 
-    let char_to_point: HashMap<char, Point> = [
-      ('o', Point::Orange),
-      ('p', Point::Pink),
-      ('g', Point::Green),
-      ('b', Point::Blue),
-    ]
-    .into_iter()
-    .collect();
+    let char_to_point: HashMap<char, Point> =
+      [('o', Point::Orange), ('p', Point::Pink), ('g', Point::Green), ('b', Point::Blue)]
+        .into_iter()
+        .collect();
 
     let mut data: Vec<Point> = Vec::with_capacity(Self::WIDTH * Self::HEIGHT);
 
@@ -55,10 +51,7 @@ impl Board {
       data.push(point);
     }
 
-    Ok(Board {
-      data,
-      moves: Vec::new(),
-    })
+    Ok(Board { data, moves: Vec::new() })
   }
 
   fn get_index(x: usize, y: usize) -> usize {
@@ -104,13 +97,13 @@ impl Board {
     let mut neighbors: Vec<Coordinate> = Vec::with_capacity(4);
 
     if x > 0 {
-      neighbors.push(Coordinate { x: x - 1, y })
+      neighbors.push(Coordinate { x: x - 1, y });
     }
     if x < Board::WIDTH - 1 {
       neighbors.push(Coordinate { x: x + 1, y });
     }
     if y > 0 {
-      neighbors.push(Coordinate { y: y - 1, x })
+      neighbors.push(Coordinate { y: y - 1, x });
     }
     if y < Board::HEIGHT - 1 {
       neighbors.push(Coordinate { y: y + 1, x });
@@ -243,9 +236,7 @@ mod tests {
     ];
 
     for y in 0..Board::HEIGHT {
-      let row: Vec<Point> = (0..Board::WIDTH)
-        .map(|x| board.data[Board::get_index(x, y)])
-        .collect();
+      let row: Vec<Point> = (0..Board::WIDTH).map(|x| board.data[Board::get_index(x, y)]).collect();
 
       assert_eq!(expected_rows[y], row, "Row {} does not match expected", y);
     }
@@ -258,10 +249,8 @@ mod tests {
 
     let group = board.get_group(1, 1);
 
-    let sorted_group: Vec<Coordinate> = group
-      .into_iter()
-      .sorted_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y)))
-      .collect();
+    let sorted_group: Vec<Coordinate> =
+      group.into_iter().sorted_by(|a, b| a.x.cmp(&b.x).then(a.y.cmp(&b.y))).collect();
 
     let expected_group: Vec<Coordinate> = vec![
       Coordinate { x: 0, y: 1 },
