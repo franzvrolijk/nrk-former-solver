@@ -58,6 +58,23 @@ impl Board {
     Ok(Board { data, moves: Vec::new() })
   }
 
+  // pub fn print(&self) {
+  //   for y in 0..Self::HEIGHT {
+  //     for x in 0..Self::WIDTH {
+  //       let point = self.data[Board::get_index(x, y)];
+  //       let symbol = match point {
+  //         Point::Orange => 'o',
+  //         Point::Pink => 'p',
+  //         Point::Blue => 'b',
+  //         Point::Green => 'g',
+  //         Point::Empty => '_',
+  //       };
+  //       print!("{} ", symbol);
+  //     }
+  //     println!();
+  //   }
+  // }
+
   fn get_index(x: usize, y: usize) -> usize {
     (x * Self::HEIGHT) + y
   }
@@ -123,10 +140,10 @@ impl Board {
       neighbors.push(Coordinate { x: x + 1, y });
     }
     if y > 0 {
-      neighbors.push(Coordinate { y: y - 1, x });
+      neighbors.push(Coordinate { x, y: y - 1 });
     }
     if y < Board::HEIGHT - 1 {
-      neighbors.push(Coordinate { y: y + 1, x });
+      neighbors.push(Coordinate { x, y: y + 1 });
     }
 
     for Coordinate { x: nx, y: ny } in neighbors {
@@ -147,19 +164,20 @@ impl Board {
     for x in 0..Board::WIDTH {
       let column_start = x * Board::HEIGHT;
       let column = &mut self.data[column_start..column_start + Board::HEIGHT];
-      let mut inserted_at = Board::HEIGHT - 1;
+      let mut insert_at: i32 = (Board::HEIGHT - 1).try_into().unwrap(); // 8
 
+      // [0, 1, ..., 8] (rev)
       for i in (0..Board::HEIGHT).rev() {
         if column[i] == Point::Empty {
           continue;
         }
 
-        column[inserted_at] = column[i];
-        inserted_at = inserted_at.saturating_sub(1);
+        column[insert_at as usize] = column[i];
+        insert_at -= 1;
       }
 
-      for i in (0..inserted_at + 1).rev() {
-        column[i] = Point::Empty;
+      for i in (0..insert_at + 1).rev() {
+        column[i as usize] = Point::Empty;
       }
     }
   }
@@ -319,10 +337,12 @@ mod tests {
     let other = original.clone();
 
     assert_eq!(original.data, other.data);
+    assert_eq!(original.moves, other.moves);
 
     original.make_move(1, 1).expect("move made");
 
     assert_ne!(original.data, other.data);
+    assert_ne!(original.moves, other.moves);
   }
 
   #[test]
@@ -337,5 +357,38 @@ mod tests {
     board.make_move(1, 1).expect("move made");
 
     assert_eq!(board.is_solved(), true);
+  }
+
+  #[test]
+  fn bug_scenario() {
+    let mut board = Board::new(
+      "gbogbogoppbopgbogggpgbgobbpbopoobobppbpobgoggogoppogbopoppgobbb",
+    )
+    .expect("board");
+
+    let moves = vec![
+      Coordinate { x: 3, y: 4 },
+      Coordinate { x: 4, y: 3 },
+      Coordinate { x: 5, y: 7 },
+      Coordinate { x: 3, y: 6 },
+      Coordinate { x: 4, y: 6 },
+      Coordinate { x: 2, y: 6 },
+      Coordinate { x: 2, y: 8 },
+      Coordinate { x: 1, y: 7 },
+      Coordinate { x: 0, y: 6 },
+      Coordinate { x: 1, y: 6 },
+      Coordinate { x: 0, y: 5 },
+      Coordinate { x: 5, y: 8 },
+      Coordinate { x: 0, y: 5 },
+      Coordinate { x: 0, y: 8 },
+      Coordinate { x: 0, y: 6 },
+      Coordinate { x: 0, y: 8 },
+    ];
+
+    for m in moves {
+      board.make_move(m.x, m.y).expect("move made");
+    }
+
+    assert_eq!(board.is_solved(), false);
   }
 }

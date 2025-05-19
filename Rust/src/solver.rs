@@ -17,7 +17,7 @@ pub struct Solver {
 }
 
 impl Solver {
-  const MAX_DEPTH: usize = 15;
+  const MAX_DEPTH: usize = 13;
 
   pub fn new() -> Self {
     Solver {
@@ -73,7 +73,8 @@ impl Solver {
 
       if result.is_some()
         && (local_best_moves.is_none()
-          || result.iter().len() < local_best_moves.iter().len())
+          || result.as_ref().unwrap().len()
+            < local_best_moves.as_ref().unwrap().len())
       {
         local_best_moves = result;
       }
@@ -158,5 +159,24 @@ impl Solver {
       print!("Oops! Poisoned lock. Trying again.");
       return self.should_process(board_key, move_count);
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn solve() {
+    let board = Board::new(
+      "obobobobooboboboboobobobobooboboboboobobobobooboboboboobobobobo",
+    )
+    .unwrap();
+
+    let solver = Solver::new();
+
+    let solution = solver.solve(board).expect("Solution");
+
+    assert_eq!(solution.len(), 5);
   }
 }
