@@ -17,7 +17,7 @@ pub struct Solver {
 }
 
 impl Solver {
-  const MAX_DEPTH: usize = 13;
+  const MAX_DEPTH: usize = 16;
 
   pub fn new() -> Self {
     Solver {
